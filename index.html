@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 问卜</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f7; color: #1a1a1a; min-height: 100vh; padding: 24px 16px; }
+  .app { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 500; text-align: center; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 28px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 80px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 10px; background: white; cursor: pointer; font-size: 13px; text-align: center; color: #666; }
+  .tab.active { background: #1a1a1a; color: white; border-color: #1a1a1a; }
+  .card { background: white; border: 1px solid #ebebeb; border-radius: 16px; padding: 20px; margin-bottom: 12px; }
+  .label { font-size: 13px; color: #888; margin-bottom: 6px; display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip { padding: 6px 14px; border: 1px solid #e0e0e0; border-radius: 99px; font-size: 12px; color: #666; cursor: pointer; background: white; }
+  .chip.selected { background: #1a1a1a; color: white; border-color: #1a1a1a; }
+  input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 14px; font-family: inherit; background: white; color: #1a1a1a; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #999; }
+  .btn { width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 10px; background: #1a1a1a; color: white; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 4px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .result { background: #f5f5f3; border-radius: 16px; padding: 20px; margin-top: 12px; display: none; }
+  .result-meta { font-size: 12px; color: #999; margin-bottom: 10px; }
+  .result-text { font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
+  .form-group { margin-bottom: 14px; }
+  select option { color: #1a1a1a; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>AI 问卜</h1>
+  <p class="subtitle">塔罗 · 星座 · 周易 · 八字</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="setMode('tarot',this)">🃏 塔罗牌</div>
+    <div class="tab" onclick="setMode('astro',this)">⭐ 星座</div>
+    <div class="tab" onclick="setMode('iching',this)">☯ 周易</div>
+    <div class="tab" onclick="setMode('bazi',this)">📿 八字</div>
+  </div>
+
+  <div class="card">
+    <div id="mode-tarot">
+      <div class="form-group">
+        <span class="label">你想问什么？</span>
+        <div class="chips">
+          <div class="chip" onclick="pickChip(this,'tarot-q')">感情运</div>
+          <div class="chip" onclick="pickChip(this,'tarot-q')">事业发展</div>
+          <div class="chip" onclick="pickChip(this,'tarot-q')">财运</div>
+          <div class="chip" onclick="pickChip(this,'tarot-q')">近期运势</div>
+          <div class="chip" onclick="pickChip(this,'tarot-q')">重要决定</div>
+        </div>
+        <textarea id="tarot-q" rows="2" placeholder="或直接描述你的困惑..."></textarea>
+      </div>
+    </div>
+
+    <div id="mode-astro" style="display:none">
+      <div class="form-group">
+        <span class="label">你的星座</span>
+        <select id="astro-sign">
+          <option value="">选择星座</option>
+          <option>白羊座</option><option>金牛座</option><option>双子座</option>
+          <option>巨蟹座</option><option>狮子座</option><option>处女座</option>
+          <option>天秤座</option><option>天蝎座</option><option>射手座</option>
+          <option>摩羯座</option><option>水瓶座</option><option>双鱼座</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <span class="label">想了解哪方面？</span>
+        <div class="chips">
+          <div class="chip selected" onclick="pickChip(this,'astro-q')">本周运势</div>
+          <div class="chip" onclick="pickChip(this,'astro-q')">感情</div>
+          <div class="chip" onclick="pickChip(this,'astro-q')">事业</div>
+          <div class="chip" onclick="pickChip(this,'astro-q')">财运</div>
+        </div>
+        <input id="astro-q" value="本周运势" placeholder="或输入具体问题">
+      </div>
+    </div>
+
+    <div id="mode-iching" style="display:none">
+      <div class="form-group">
+        <span class="label">心中默念你的问题，然后起卦</span>
+        <textarea id="iching-q" rows="2" placeholder="描述你想了解的事..."></textarea>
+      </div>
+    </div>
+
+    <div id="mode-bazi" style="display:none">
+      <div class="form-group">
+        <span class="label">出生年份</span>
+        <input id="bazi-year" type="number" placeholder="例如 1995" min="1920" max="2010">
+      </div>
+      <div class="form-group">
+        <span class="label">出生月份</span>
+        <select id="bazi-month">
+          <option value="">选择月份</option>
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+          <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+          <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <span class="label">想了解什么</span>
+        <div class="chips">
+          <div class="chip selected" onclick="pickChip(this,'bazi-q')">整体命盘</div>
+          <div class="chip" onclick="pickChip(this,'bazi-q')">今年运势</div>
+          <div class="chip" onclick="pickChip(this,'bazi-q')">事业格局</div>
+          <div class="chip" onclick="pickChip(this,'bazi-q')">感情姻缘</div>
+        </div>
+        <input id="bazi-q" value="整体命盘" style="margin-top:8px" placeholder="或输入具体问题">
+      </div>
+    </div>
+
+    <button class="btn" onclick="askFortune()" id="ask-btn">开始占卜</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-meta" id="result-meta"></div>
+    <div class="result-text" id="result-text"></div>
+  </div>
+</div>
+
+<script>
+let mode = 'tarot';
+
+function setMode(m, el) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['tarot','astro','iching','bazi'].forEach(x => {
+    document.getElementById('mode-'+x).style.display = x === m ? 'block' : 'none';
+  });
+  document.getElementById('result').style.display = 'none';
+}
+
+function pickChip(el, id) {
+  el.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  const inp = document.getElementById(id);
+  if (inp) inp.value = el.textContent;
+}
+
+function buildPrompt() {
+  if (mode === 'tarot') {
+    const q = document.getElementById('tarot-q').value || '近期运势';
+    return `你是一位经验丰富的塔罗牌占卜师，请用中文为用户占卜。问题：${q}。随机抽取3张塔罗牌（可正位或逆位），给出每张牌的名称和含义，再综合解读。语气神秘温暖，结尾一句鼓励，300字以内。`;
+  } else if (mode === 'astro') {
+    const sign = document.getElementById('astro-sign').value || '天秤座';
+    const q = document.getElementById('astro-q').value || '本周运势';
+    return `你是专业占星师，用中文为${sign}解读${q}。涵盖感情、事业、财运，给出幸运色和幸运数字，结尾一句建议。300字以内。`;
+  } else if (mode === 'iching') {
+    const q = document.getElementById('iching-q').value || '近期运势';
+    return `你是周易大师，用中文起卦解读。所问：${q}。给出一个卦名，解释卦象，结合问题给出指引。语气古朴，300字以内。`;
+  } else {
+    const year = document.getElementById('bazi-year').value || '1995';
+    const month = document.getElementById('bazi-month').value || '6';
+    const q = document.getElementById('bazi-q').value || '整体命盘';
+    return `你是八字命理师，根据${year}年${month}月出生，分析${q}。包括五行属性、性格特点、运势走向。300字以内。`;
+  }
+}
+
+async function askFortune() {
+  const btn = document.getElementById('ask-btn');
+  const result = document.getElementById('result');
+  btn.disabled = true;
+  btn.textContent = '占卜中...';
+  result.style.display = 'block';
+  document.getElementById('result-text').textContent = '神明思索中，请稍候...';
+
+  try {
+    const resp = await fetch('/api/fortune', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: buildPrompt() })
+    });
+    const data = await resp.json();
+    const now = new Date();
+    document.getElementById('result-meta').textContent =
+      `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+    document.getElementById('result-text').textContent = data.result || data.error;
+  } catch(e) {
+    document.getElementById('result-text').textContent = '网络异常，请稍后重试';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '再问一次';
+}
+</script>
+</body>
+</html>
